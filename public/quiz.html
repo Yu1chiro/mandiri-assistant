@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .quiz-card {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            box-shadow: 20px 20px 60px #d0d0d0, -20px -20px 60px #ffffff;
+        }
+
+        .option-btn {
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .option-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .option-btn.selected {
+            border-color: #3b82f6;
+            background: linear-gradient(145deg, #dbeafe, #bfdbfe);
+        }
+
+        .option-btn.correct {
+            border-color: #10b981;
+            background: linear-gradient(145deg, #d1fae5, #a7f3d0);
+        }
+
+        .option-btn.incorrect {
+            border-color: #ef4444;
+            background: linear-gradient(145deg, #fee2e2, #fecaca);
+        }
+
+        .progress-ring {
+            transform: rotate(-90deg);
+            transition: stroke-dasharray 0.3s ease;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .score-animation {
+            animation: scoreReveal 1s ease-out;
+        }
+
+        @keyframes scoreReveal {
+            0% { transform: scale(0) rotate(180deg); opacity: 0; }
+            50% { transform: scale(1.1) rotate(0deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #f39c12;
+            animation: confetti 3s ease-out infinite;
+        }
+
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg relative overflow-x-hidden">
+    <!-- Confetti Container -->
+    <div id="confettiContainer" class="fixed inset-0 pointer-events-none z-50"></div>
+
+    <div class="min-h-screen p-4 relative z-10">
+        <!-- Header -->
+        <div class="glass-effect rounded-2xl p-6 mb-6 shadow-lg">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button onclick="window.location.href='/study'" class="p-2 bg-white/20 rounded-xl hover:bg-white/30 transition-all duration-300">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                    </button>
+                    <div>
+                        <h1 id="quizTitle" class="text-2xl font-bold text-white">Loading Quiz...</h1>
+                        <p class="text-white/80">Uji pemahaman Anda</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-white/80 text-sm mb-1">Progress</div>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-32 bg-white/20 rounded-full h-2">
+                            <div id="progressBar" class="h-2 bg-gradient-to-r from-green-400 to-blue-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <div id="progressText" class="text-white font-semibold">0/0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quiz Content -->
+        <div class="max-w-4xl mx-auto">
+            <!-- Loading State -->
+            <div id="loadingState" class="quiz-card rounded-3xl p-8 shadow-2xl text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                <p class="text-gray-600 text-lg">Memuat quiz...</p>
+            </div>
+
+            <!-- Quiz Questions -->
+            <div id="quizContainer" class="hidden">
+                <div class="quiz-card rounded-3xl p-8 mb-6 shadow-2xl fade-in">
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                                <span id="questionNumber" class="text-white font-bold">1</span>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-800">Pertanyaan</h2>
+                                <p class="text-gray-500 text-sm">Pilih jawaban yang paling tepat</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div id="timer" class="text-2xl font-bold text-blue-600">30</div>
+                            <div class="text-gray-500 text-sm">detik</div>
+                        </div>
+                    </div>
+                    
+                    <div id="questionText" class="text-xl text-gray-800 mb-8 leading-relaxed">
+                        <!-- Question will be loaded here -->
+                    </div>
+                    
+                    <div id="optionsContainer" class="space-y-4 mb-8">
+                        <!-- Options will be loaded here -->
+                    </div>
+                    
+                    <div class="flex justify-between">
+                        <button id="prevQuestion" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                            </svg>
+                            Sebelumnya
+                        </button>
+                        
+                        <button id="nextQuestion" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span id="nextBtnText">Selanjutnya</span>
+                            <svg class="w-5 h-5 inline ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Explanation Panel (Hidden by default) -->
+                <div id="explanationPanel" class="quiz-card rounded-3xl p-8 shadow-2xl hidden">
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-800">Penjelasan</h3>
+                    </div>
+                    <div id="explanationText" class="text-gray-700 leading-relaxed">
+                        <!-- Explanation will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div id="resultsContainer" class="hidden">
+                <div class="quiz-card rounded-3xl p-8 shadow-2xl text-center score-animation">
+                    <div class="mb-6">
+                        <div id="scoreCircle" class="w-32 h-32 mx-auto mb-4 relative">
+                            <svg class="w-32 h-32" viewBox="0 0 120 120">
+                                <circle cx="60" cy="60" r="50" stroke="#e5e7eb" stroke-width="8" fill="none"></circle>
+                                <circle id="scoreProgress" cx="60" cy="60" r="50" stroke="url(#gradient)" stroke-width="8" fill="none" class="progress-ring" stroke-dasharray="0 314"></circle>
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                        <stop offset="0%" style="stop-color:#10b981"/>
+                                        <stop offset="100%" style="stop-color:#3b82f6"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <div>
+                                    <div id="finalScore" class="text-3xl font-bold text-gray-800">0%</div>
+                                    <div class="text-gray-500 text-sm">Skor</div>
+                                </div>
+                            </div>
+                        </div>
+                        <h2 id="resultTitle" class="text-3xl font-bold text-gray-800 mb-2">Selamat!</h2>
+                        <p id="resultMessage" class="text-gray-600 text-lg">Anda telah menyelesaikan quiz</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-3 gap-4 mb-8">
+                        <div class="bg-green-50 rounded-xl p-4">
+                            <div id="correctCount" class="text-2xl font-bold text-green-600">0</div>
+                            <div class="text-green-600 text-sm">Benar</div>
+                        </div>
+                        <div class="bg-red-50 rounded-xl p-4">
+                            <div id="incorrectCount" class="text-2xl font-bold text-red-600">0</div>
+                            <div class="text-red-600 text-sm">Salah</div>
+                        </div>
+                        <div class="bg-blue-50 rounded-xl p-4">
+                            <div id="totalQuestions" class="text-2xl font-bold text-blue-600">0</div>
+                            <div class="text-blue-600 text-sm">Total</div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center space-x-4">
+                        <button onclick="window.location.href='/study'" class="px-6 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-300 transition-all duration-300">
+                            Kembali ke Materi
+                        </button>
+                        <button onclick="window.location.href='/'" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl hover:from-blue-600 hover:to-purple-700 transition-all duration-300">
+                            Mulai Pembelajaran Baru
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let quizData = null;
+        let currentQuestion = 0;
+        let userAnswers = [];
+        let score = 0;
+        let timeLeft = 30;
+        let timer = null;
+
+        // Toast configuration
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        // Load quiz data
+        async function loadQuizData() {
+            try {
+                const response = await fetch('/api/quiz-data');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    quizData = data;
+                    userAnswers = new Array(quizData.questions.length).fill(-1);
+                    initializeQuiz();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Error loading quiz data:', error);
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Gagal memuat quiz'
+                });
+                setTimeout(() => {
+                    window.location.href = '/study';
+                }, 2000);
+            }
+        }
+
+        // Initialize quiz interface
+        function initializeQuiz() {
+            document.getElementById('quizTitle').textContent = quizData.title;
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('quizContainer').classList.remove('hidden');
+            
+            updateQuestion();
+            updateProgress();
+            startTimer();
+        }
+
+        // Update question display
+        function updateQuestion() {
+            const question = quizData.questions[currentQuestion];
+            
+            document.getElementById('questionNumber').textContent = currentQuestion + 1;
+            document.getElementById('questionText').textContent = question.question;
+            
+            // Update options
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = '';
+            
+            question.options.forEach((option, index) => {
+                const optionBtn = document.createElement('button');
+                optionBtn.className = 'option-btn w-full p-4 rounded-xl text-left bg-white hover:bg-gray-50 border-2';
+                optionBtn.textContent = option;
+                optionBtn.onclick = () => selectOption(index);
+                
+                // Highlight selected option
+                if (userAnswers[currentQuestion] === index) {
+                    optionBtn.classList.add('selected');
+                }
+                
+                optionsContainer.appendChild(optionBtn);
+            });
+            
+            // Update navigation buttons
+            document.getElementById('prevQuestion').disabled = currentQuestion === 0;
+            
+            const nextBtn = document.getElementById('nextQuestion');
+            const nextBtnText = document.getElementById('nextBtnText');
+            
+            if (currentQuestion === quizData.questions.length - 1) {
+                nextBtnText.textContent = 'Selesai';
+            } else {
+                nextBtnText.textContent = 'Selanjutnya';
+            }
+            
+            // Reset timer
+            timeLeft = 30;
+            startTimer();
+        }
+
+        // Select option
+        function selectOption(optionIndex) {
+            userAnswers[currentQuestion] = optionIndex;
+            
+            // Update option buttons
+            const optionBtns = document.querySelectorAll('.option-btn');
+            optionBtns.forEach((btn, index) => {
+                btn.classList.remove('selected');
+                if (index === optionIndex) {
+                    btn.classList.add('selected');
+                }
+            });
+        }
+
+        // Start timer
+        function startTimer() {
+            clearInterval(timer);
+            timeLeft = 30;
+            
+            timer = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer').textContent = timeLeft;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(timer);
+                    // Auto advance to next question
+                    nextQuestion();
+                }
+            }, 1000);
+        }
+
+        // Update progress
+        function updateProgress() {
+            const progress = ((currentQuestion + 1) / quizData.questions.length) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = 
+                `${currentQuestion + 1}/${quizData.questions.length}`;
+        }
+
+        // Previous question
+        function prevQuestion() {
+            if (currentQuestion > 0) {
+                currentQuestion--;
+                updateQuestion();
+                updateProgress();
+                hideExplanation();
+            }
+        }
+
+        // Next question
+        function nextQuestion() {
+            clearInterval(timer);
+            
+            if (currentQuestion < quizData.questions.length - 1) {
+                // Show explanation if answered
+                if (userAnswers[currentQuestion] !== -1) {
+                    showExplanation();
+                    setTimeout(() => {
+                        currentQuestion++;
+                        updateQuestion();
+                        updateProgress();
+                        hideExplanation();
+                    }, 3000);
+                } else {
+                    currentQuestion++;
+                    updateQuestion();
+                    updateProgress();
+                }
+            } else {
+                // Finish quiz
+                finishQuiz();
+            }
+        }
+
+        // Show explanation
+        function showExplanation() {
+            const question = quizData.questions[currentQuestion];
+            const userAnswer = userAnswers[currentQuestion];
+            const correctAnswer = question.correct;
+            
+            // Update option buttons to show correct/incorrect
+            const optionBtns = document.querySelectorAll('.option-btn');
+            optionBtns.forEach((btn, index) => {
+                btn.classList.remove('selected');
+                if (index === correctAnswer) {
+                    btn.classList.add('correct');
+                } else if (index === userAnswer && userAnswer !== correctAnswer) {
+                    btn.classList.add('incorrect');
+                }
+            });
+            
+            // Show explanation panel
+            document.getElementById('explanationText').textContent = question.explanation;
+            document.getElementById('explanationPanel').classList.remove('hidden');
+        }
+
+        // Hide explanation
+        function hideExplanation() {
+            document.getElementById('explanationPanel').classList.add('hidden');
+            
+            // Reset option button styles
+            const optionBtns = document.querySelectorAll('.option-btn');
+            optionBtns.forEach(btn => {
+                btn.classList.remove('correct', 'incorrect');
+            });
+        }
+
+        // Finish quiz and show results
+        function finishQuiz() {
+            clearInterval(timer);
+            
+            // Calculate score
+            score = 0;
+            userAnswers.forEach((answer, index) => {
+                if (answer === quizData.questions[index].correct) {
+                    score++;
+                }
+            });
+            
+            const percentage = Math.round((score / quizData.questions.length) * 100);
+            
+            // Hide quiz container and show results
+            document.getElementById('quizContainer').classList.add('hidden');
+            document.getElementById('resultsContainer').classList.remove('hidden');
+            
+            // Update results
+            document.getElementById('finalScore').textContent = `${percentage}%`;
+            document.getElementById('correctCount').textContent = score;
+            document.getElementById('incorrectCount').textContent = quizData.questions.length - score;
+            document.getElementById('totalQuestions').textContent = quizData.questions.length;
+            
+            // Update result message
+            let resultTitle = "Selamat!";
+            let resultMessage = "Anda telah menyelesaikan quiz";
+            
+            if (percentage >= 80) {
+                resultTitle = "Luar Biasa!";
+                resultMessage = "Pemahaman Anda sangat baik";
+                createConfetti();
+            } else if (percentage >= 60) {
+                resultTitle = "Bagus!";
+                resultMessage = "Anda memahami materi dengan baik";
+            } else {
+                resultTitle = "Perlu Belajar Lagi";
+                resultMessage = "Mari tingkatkan pemahaman Anda";
+            }
+            
+            document.getElementById('resultTitle').textContent = resultTitle;
+            document.getElementById('resultMessage').textContent = resultMessage;
+            
+            // Animate score circle
+            const circumference = 2 * Math.PI * 50;
+            const progressCircle = document.getElementById('scoreProgress');
+            progressCircle.style.strokeDasharray = `${(percentage / 100) * circumference} ${circumference}`;
+            
+            // Show success toast
+            Toast.fire({
+                icon: 'success',
+                title: `Quiz selesai! Skor Anda: ${percentage}%`
+            });
+        }
+
+        // Create confetti animation
+        function createConfetti() {
+            const container = document.getElementById('confettiContainer');
+            const colors = ['#f39c12', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#f1c40f'];
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + 'vw';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 3 + 's';
+                confetti.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                
+                container.appendChild(confetti);
+                
+                // Remove confetti after animation
+                setTimeout(() => {
+                    confetti.remove();
+                }, 5000);
+            }
+        }
+
+        // Event listeners
+        document.getElementById('prevQuestion').addEventListener('click', prevQuestion);
+        document.getElementById('nextQuestion').addEventListener('click', nextQuestion);
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentQuestion > 0) {
+                prevQuestion();
+            } else if (e.key === 'ArrowRight') {
+                nextQuestion();
+            } else if (e.key >= '1' && e.key <= '4') {
+                const optionIndex = parseInt(e.key) - 1;
+                if (optionIndex < quizData.questions[currentQuestion].options.length) {
+                    selectOption(optionIndex);
+                }
+            }
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', loadQuizData);
+    </script>
+</body>
+</html>

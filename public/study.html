@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .content-card {
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            box-shadow: 20px 20px 60px #d0d0d0, -20px -20px 60px #ffffff;
+        }
+
+        .section-content {
+            line-height: 1.8;
+        }
+
+        .section-content h1, .section-content h2, .section-content h3 {
+            margin: 1rem 0;
+            font-weight: bold;
+        }
+
+        .section-content p {
+            margin-bottom: 1rem;
+        }
+
+        .section-content ul, .section-content ol {
+            margin: 1rem 0;
+            padding-left: 2rem;
+        }
+
+        .section-content li {
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .floating-icons {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            z-index: 0;
+        }
+
+        .floating-icon {
+            position: absolute;
+            opacity: 0.1;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .floating-icon:nth-child(1) {
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+
+        .floating-icon:nth-child(2) {
+            top: 60%;
+            right: 15%;
+            animation-delay: 2s;
+        }
+
+        .floating-icon:nth-child(3) {
+            bottom: 30%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-30px) rotate(120deg); }
+            66% { transform: translateY(15px) rotate(240deg); }
+        }
+    </style>
+</head>
+<body class="min-h-screen gradient-bg relative">
+   <div class="floating-icons">
+    <div class="floating-icon w-12 h-12 sm:w-16 sm:h-16 bg-white/10 rounded-full"></div>
+    <div class="floating-icon w-10 h-10 sm:w-12 sm:h-12 bg-white/10 rounded-full"></div>
+    <div class="floating-icon w-14 h-14 sm:w-20 sm:h-20 bg-white/10 rounded-full"></div>
+</div>
+
+<div class="min-h-screen p-4 relative z-10">
+    <!-- Header - Improved for mobile -->
+    <div class="glass-effect rounded-2xl p-4 sm:p-6 mb-6 shadow-lg">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-center space-x-3 sm:space-x-4">
+                <button onclick="window.location.href='/'" class="p-2 bg-white/20 rounded-xl hover:bg-white/30 active:scale-95 transition-all duration-300 touch-target">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                </button>
+                <div>
+                    <h1 id="studyTitle" class="text-xl sm:text-2xl font-bold text-white truncate max-w-[180px] sm:max-w-none">Loading...</h1>
+                    <p class="text-white/80 text-sm sm:text-base">Belajar dengan bantuan AI</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-white/80 text-xs sm:text-sm mb-1">Progress</div>
+                <div class="w-full sm:w-32 bg-white/20 rounded-full h-2.5">
+                    <div id="progressBar" class="progress-bar h-full w-0"></div>
+                </div>
+                <div id="progressText" class="text-white/80 text-xs mt-1">0/0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Study Content - Improved for mobile -->
+    <div class="max-w-4xl mx-auto">
+        <div class="content-card rounded-3xl p-5 sm:p-8 mb-6 shadow-2xl">
+            <div id="studyContent" class="fade-in">
+                <!-- Loading State -->
+                <div id="loadingState" class="text-center py-8 sm:py-12">
+                    <div class="animate-spin rounded-full h-12 w-12 sm:h-16 sm:w-16 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
+                    <p class="text-gray-600 text-base sm:text-lg">Memuat materi pembelajaran...</p>
+                </div>
+
+                <!-- Study Content -->
+                <div id="contentDisplay" class="hidden">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 sm:mb-6 gap-2">
+                        <h2 id="sectionHeading" class="text-2xl sm:text-3xl font-bold text-gray-800 break-words"></h2>
+                        <div class="flex items-center justify-end sm:justify-center space-x-2 text-gray-500 text-sm sm:text-base">
+                            <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span id="readingTime">5 menit baca</span>
+                        </div>
+                    </div>
+                    
+                    <div id="sectionContent" class="section-content text-gray-700 text-base sm:text-lg leading-relaxed mb-6 sm:mb-8 space-y-4">
+                        <!-- Content will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Controls - Improved for mobile -->
+        <div class="glass-effect rounded-2xl p-4 sm:p-6 mb-6 shadow-lg">
+            <div class="flex items-center justify-between gap-2 sm:gap-4">
+                <button id="prevBtn" class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed touch-target">
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="text-sm sm:text-base">Sebelumnya</span>
+                </button>
+
+                <div class="flex items-center">
+                    <div class="text-white text-center">
+                        <div class="text-xs sm:text-sm opacity-80">Bagian</div>
+                        <div id="sectionCounter" class="text-lg sm:text-xl font-bold">1 / 1</div>
+                    </div>
+                </div>
+
+                <button id="nextBtn" class="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-6 py-2 sm:py-3 bg-white/20 text-white rounded-xl hover:bg-white/30 active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed touch-target">
+                    <span class="text-sm sm:text-base">Selanjutnya</span>
+                    <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Quiz Button - Improved for mobile -->
+        <div class="text-center py-5">
+             <a href="https://nihongo-builder.vercel.app/14"  class="bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-2xl hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all duration-300 active:scale-95 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed touch-target w-full sm:w-auto">
+            Take Quiz
+            </a>
+            <button id="quizBtn" class="hidden bg-gradient-to-r from-green-500 to-blue-600 text-white font-bold py-3 sm:py-4 px-6 sm:px-8 rounded-2xl hover:from-green-600 hover:to-blue-700 focus:outline-none focus:ring-4 focus:ring-green-300 transition-all duration-300 active:scale-95 transform hover:scale-105 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed touch-target w-full sm:w-auto">
+                <svg class="w-5 h-5 sm:w-6 sm:h-6 inline mr-1 sm:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                </svg>
+                <span id="quizBtnText" class="text-sm sm:text-base">Mulai Quiz</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+    <script>
+        let studyData = null;
+        let currentSection = 0;
+
+        // Toast configuration
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.addEventListener('mouseenter', Swal.stopTimer)
+                toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+        });
+
+        // Load study data
+        async function loadStudyData() {
+            try {
+                const response = await fetch('/api/study-data');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    studyData = data;
+                    initializeStudy();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                console.error('Error loading study data:', error);
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Gagal memuat data pembelajaran'
+                });
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
+            }
+        }
+
+        // Initialize study interface
+        function initializeStudy() {
+            document.getElementById('studyTitle').textContent = studyData.title;
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('contentDisplay').classList.remove('hidden');
+            
+            updateContent();
+            updateNavigation();
+            updateProgress();
+        }
+
+        // Update content display
+        function updateContent() {
+            const section = studyData.sections[currentSection];
+            document.getElementById('sectionHeading').textContent = section.heading;
+            
+            // Format content with proper HTML
+            let formattedContent = section.content
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>');
+            
+            if (!formattedContent.startsWith('<p>')) {
+                formattedContent = '<p>' + formattedContent + '</p>';
+            }
+            
+            document.getElementById('sectionContent').innerHTML = formattedContent;
+            
+            // Estimate reading time
+            const wordCount = section.content.split(' ').length;
+            const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+            document.getElementById('readingTime').textContent = `${readingTime} menit baca`;
+            
+            // Add fade in animation
+            document.getElementById('studyContent').classList.remove('fade-in');
+            setTimeout(() => {
+                document.getElementById('studyContent').classList.add('fade-in');
+            }, 50);
+        }
+
+        // Update navigation buttons
+        function updateNavigation() {
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            
+            prevBtn.disabled = currentSection === 0;
+            nextBtn.disabled = currentSection === studyData.sections.length - 1;
+            
+            document.getElementById('sectionCounter').textContent = 
+                `${currentSection + 1} / ${studyData.sections.length}`;
+        }
+
+        // Update progress bar
+        function updateProgress() {
+            const progress = ((currentSection + 1) / studyData.sections.length) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = 
+                `${currentSection + 1}/${studyData.sections.length}`;
+        }
+
+        // Navigation handlers
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentSection > 0) {
+                currentSection--;
+                updateContent();
+                updateNavigation();
+                updateProgress();
+            }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentSection < studyData.sections.length - 1) {
+                currentSection++;
+                updateContent();
+                updateNavigation();
+                updateProgress();
+            }
+        });
+
+        // Quiz button handler
+        document.getElementById('quizBtn').addEventListener('click', async () => {
+            const quizBtn = document.getElementById('quizBtn');
+            const quizBtnText = document.getElementById('quizBtnText');
+            
+            // Loading state
+            quizBtn.disabled = true;
+            quizBtnText.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Membuat Quiz...
+            `;
+
+            try {
+                const response = await fetch('/api/generate-quiz', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Quiz berhasil dibuat! Mengalihkan...'
+                    });
+
+                    setTimeout(() => {
+                        window.location.href = '/quiz';
+                    }, 1500);
+                } else {
+                    throw new Error(result.error);
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Gagal membuat quiz: ' + error.message
+                });
+            } finally {
+                // Reset button state
+                quizBtn.disabled = false;
+                quizBtnText.innerHTML = `
+                    <svg class="w-6 h-6 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                    </svg>
+                    Mulai Quiz
+                `;
+            }
+        });
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentSection > 0) {
+                document.getElementById('prevBtn').click();
+            } else if (e.key === 'ArrowRight' && currentSection < studyData.sections.length - 1) {
+                document.getElementById('nextBtn').click();
+            }
+        });
+
+        // Initialize when page loads
+        window.addEventListener('load', loadStudyData);
+    </script>
+</body>
+</html>
