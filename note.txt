@@ -1,0 +1,17 @@
+const prompt = `Jelaskan materi "${title}" bahasa yg sederhana dan mudah dimengerti layaknya anda menjelaskan ke anak 15 tahun berisi analogi sederhana, kapan pola kalimat ini dipakai dan digunakan
+      wajib sertakan 5 minimal contoh kalimat (untuk contoh kalimat di setiap pola kalimat anda buat orisinil bukan mencontek yg ada di buku).
+      contoh kalimat, wajib kalimat jepang dengan arti bahasa indonesia gunakam kanji yang mudah saja.
+        
+        Format respon harus dalam JSON dengan struktur:
+        {
+            "title": "judul materi",
+            "sections": [
+                {
+                    "heading": "judul bagian",
+                    "content": "penjelasan detail"
+                }
+            ]
+        }
+        
+        Buat minimal 5-10 bagian pembelajaran yang mudah dipahami dan interaktif. Setiap bagian harus memiliki penjelasan yang cukup detail tapi tidak terlalu panjang per bagian.
+        berikan juga kesimpulan di bagian terakhir terkait materi "${title}" `;

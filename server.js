@@ -37,8 +37,7 @@ app.post('/api/generate-study', async (req, res) => {
             return res.status(400).json({ error: 'Title dan image harus diisi' });
         }
 
-        const prompt = `Jelaskan materi "${title}" dengan bahasa yang mudah di pahami  berdasarkan gambar yang diberikan, jelaskan layaknya menjelaskan ke anak umur 15 tahun dengan analogi sederhana to the point dan langsung pada maksud 
-        contoh kalimat wajib memakai bahasa jepang ada huruf jepang, furigana dan arti bahasa indonesia dibuat rapi,  5 contoh kalimat yang tidak terlalu panjang fokus pada penerapan dan maksud/tujuan kalimat.
+        const prompt = `Jelaskan materi "${title}" bahasa yg sederhana dan diksi mudah dimengerti layaknya anda menjelaskan ke anak 15 tahun berisi analogi sederhana.
         
         Format respon harus dalam JSON dengan struktur:
         {
@@ -119,67 +118,125 @@ app.get('/api/study-data', (req, res) => {
 });
 
 // API untuk generate quiz
-app.post('/api/generate-quiz', async (req, res) => {
+// Variabel untuk status quiz generation
+let isGeneratingQuiz = false;
+let quizGenerationStartTime = null;
+
+// API untuk memulai generate quiz
+app.post('/api/start-quiz-generation', async (req, res) => {
     try {
         if (!currentStudyData) {
             return res.status(400).json({ error: 'Tidak ada materi untuk dijadikan quiz' });
         }
 
-        const prompt = `Berdasarkan materi pembelajaran tentang "${currentStudyData.title}", buatlah 10 soal pilihan ganda bahasa jepang yang menguji pemahaman siswa, terkait materi tersebut.
-
-        Format respon harus dalam JSON dengan struktur:
-        {
-            "title": "Quiz: ${currentStudyData.title}",
-            "questions": [
-                {
-                    "question": "pertanyaan",
-                    "options": ["A. pilihan 1", "B. pilihan 2", "C. pilihan 3", "D. pilihan 4"],
-                    "correct": 0,
-                    "explanation": "penjelasan jawaban yang benar"
-                }
-            ]
+        if (isGeneratingQuiz) {
+            return res.json({ 
+                success: true, 
+                status: 'processing', 
+                message: 'Quiz sedang dalam proses pembuatan' 
+            });
         }
-        
-        Pastikan soal bervariasi dari mudah hingga sedang, dan setiap soal memiliki 4 pilihan jawaban.`;
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-goog-api-key': process.env.GEMINI_API_KEY
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }]
-            })
+        // Set status sedang generate
+        isGeneratingQuiz = true;
+        quizGenerationStartTime = Date.now();
+        currentQuizData = null;
+
+        // Kirim response langsung, proses dilanjutkan di background
+        res.json({ 
+            success: true, 
+            status: 'started', 
+            message: 'Pembuatan quiz dimulai' 
         });
 
-        const data = await response.json();
-        
-        if (!response.ok) {
-            throw new Error(data.error?.message || 'Error dari Gemini API');
-        }
-
-        let quizContent;
+        // Proses generate quiz di background
         try {
-            const rawText = data.candidates[0].content.parts[0].text;
-            const cleanedText = rawText.replace(/```json\n?|\n?```/g, '').trim();
-            quizContent = JSON.parse(cleanedText);
-        } catch (parseError) {
-            throw new Error('Gagal memproses format quiz dari AI');
-        }
+            const prompt = `Berdasarkan materi pembelajaran tentang "${currentStudyData.title}", buatlah 10 soal pilihan ganda dengan diksi sederhana yang menguji pemahaman siswa, terkait materi tersebut.
 
-        currentQuizData = quizContent;
-        res.json({ success: true, data: quizContent });
+            Format respon harus dalam JSON dengan struktur:
+            {
+                "title": "Quiz: ${currentStudyData.title}",
+                "questions": [
+                    {
+                        "question": "pertanyaan",
+                        "options": ["A. pilihan 1", "B. pilihan 2", "C. pilihan 3", "D. pilihan 4"],
+                        "correct": 0,
+                        "explanation": "penjelasan jawaban yang benar"
+                    }
+                ]
+            }
+            
+            Pastikan soal bervariasi dari mudah hingga sedang, dan setiap soal memiliki 4 pilihan jawaban.`;
+
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-goog-api-key': process.env.GEMINI_API_KEY
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }]
+                })
+            });
+
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error?.message || 'Error dari Gemini API');
+            }
+
+            let quizContent;
+            try {
+                const rawText = data.candidates[0].content.parts[0].text;
+                const cleanedText = rawText.replace(/```json\n?|\n?```/g, '').trim();
+                quizContent = JSON.parse(cleanedText);
+            } catch (parseError) {
+                throw new Error('Gagal memproses format quiz dari AI');
+            }
+
+            currentQuizData = quizContent;
+            
+        } catch (error) {
+            console.error('Error generating quiz:', error);
+        } finally {
+            // Reset status generate
+            isGeneratingQuiz = false;
+        }
 
     } catch (error) {
         console.error('Error:', error);
-        res.status(500).json({ error: 'Terjadi kesalahan saat membuat quiz: ' + error.message });
+        isGeneratingQuiz = false;
+        res.status(500).json({ error: 'Terjadi kesalahan saat memulai pembuatan quiz: ' + error.message });
     }
 });
 
-// API untuk mendapatkan data quiz
+// API untuk mengecek status quiz generation
+app.get('/api/quiz-status', (req, res) => {
+    if (isGeneratingQuiz) {
+        const elapsedTime = Date.now() - quizGenerationStartTime;
+        return res.json({ 
+            status: 'processing', 
+            message: `Quiz sedang dibuat... (${Math.floor(elapsedTime / 1000)} detik)`,
+            elapsedTime 
+        });
+    }
+    
+    if (currentQuizData) {
+        return res.json({ 
+            status: 'completed', 
+            message: 'Quiz siap' 
+        });
+    }
+    
+    res.json({ 
+        status: 'not_started', 
+        message: 'Quiz belum dimulai' 
+    });
+});
+
+// API untuk mendapatkan data quiz (tetap sama)
 app.get('/api/quiz-data', (req, res) => {
     if (!currentQuizData) {
         return res.status(404).json({ error: 'Data quiz tidak ditemukan' });
